@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Betting System - Система ставок</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px 40px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .user-info {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .auth-section {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .main-content {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 16px;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+        
+        .tab.active {
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+            margin-bottom: -2px;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        input[type="text"],
+        input[type="email"],
+        input[type="password"],
+        input[type="number"] {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        button {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .bet-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .bet-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .bet-description {
+            color: #666;
+            margin-bottom: 15px;
+        }
+        
+        .bet-options {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        
+        .bet-option {
+            padding: 8px 16px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .bet-option:hover {
+            background: #e0e0e0;
+        }
+        
+        .bet-option.selected {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .message {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+        
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+        
+        .message.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+            display: block;
+        }
+        
+        .discord-verify {
+            background: #7289da;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .discord-verify h3 {
+            margin-bottom: 10px;
+        }
+        
+        .points-display {
+            font-size: 18px;
+            color: #667eea;
+            font-weight: bold;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">⚡ Betting System</div>
+            <div class="user-info">
+                <div id="authSection" class="auth-section">
+                    <button onclick="showTab('login')">Войти</button>
+                    <button onclick="showTab('register')">Регистрация</button>
+                </div>
+                <div id="userSection" style="display:none;">
+                    <span id="username"></span>
+                    <span class="points-display">Очки: <span id="userPoints">0</span></span>
+                    <button onclick="logout()">Выйти</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div id="messageDiv" class="message"></div>
+            
+            <div class="tabs">
+                <button class="tab active" onclick="showTab('bets')">Ставки</button>
+                <button class="tab" onclick="showTab('my-bets')">Мои ставки</button>
+                <button class="tab" onclick="showTab('leaderboard')">Рейтинг</button>
+                <button class="tab" onclick="showTab('profile')">Профиль</button>
+                <button class="tab" onclick="showTab('login')">Вход</button>
+                <button class="tab" onclick="showTab('register')">Регистрация</button>
+            </div>
+            
+            <!-- Вкладка со ставками -->
+            <div id="bets" class="tab-content active">
+                <h2>Активные ставки</h2>
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Загрузка ставок...</p>
+                </div>
+                <div id="betsList"></div>
+            </div>
+            
+            <!-- Вкладка с моими ставками -->
+            <div id="my-bets" class="tab-content">
+                <h2>Мои ставки</h2>
+                <div id="myBetsList"></div>
+            </div>
+            
+            <!-- Вкладка рейтинга -->
+            <div id="leaderboard" class="tab-content">
+                <h2>Топ игроков</h2>
+                <div id="leaderboardList"></div>
+            </div>
+            
+            <!-- Вкладка профиля -->
+            <div id="profile" class="tab-content">
+                <h2>Мой профиль</h2>
+                <div id="profileInfo"></div>
+                
+                <div class="discord-verify">
+                    <h3>🔗 Привязать Discord</h3>
+                    <p>Получите бонус 500 очков за верификацию!</p>
+                    <div class="form-group">
+                        <input type="text" id="discordId" placeholder="Discord ID (например: 123456789012345678)">
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="verifyKey" placeholder="Ключ верификации (получите командой /key в Discord)">
+                    </div>
+                    <button onclick="linkDiscord()">Привязать Discord</button>
+                </div>
+            </div>
+            
+            <!-- Вкладка входа -->
+            <div id="login" class="tab-content">
+                <h2>Вход в систему</h2>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="loginUsername">Имя пользователя:</label>
+                        <input type="text" id="loginUsername" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="loginPassword">Пароль:</label>
+                        <input type="password" id="loginPassword" required>
+                    </div>
+                    <button type="submit">Войти</button>
+                </form>
+            </div>
+            
+            <!-- Вкладка регистрации -->
+            <div id="register" class="tab-content">
+                <h2>Регистрация</h2>
+                <form id="registerForm">
+                    <div class="form-group">
+                        <label for="regUsername">Имя пользователя:</label>
+                        <input type="text" id="regUsername" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="regEmail">Email:</label>
+                        <input type="email" id="regEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="regPassword">Пароль:</label>
+                        <input type="password" id="regPassword" required>
+                    </div>
+                    <button type="submit">Зарегистрироваться</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Конфигурация
+        const API_URL = '/api';  // Используем прокси через nginx
+        const DISCORD_BOT_URL = '/discord-webhook';  // Прокси для Discord бота
+        
+        let authToken = localStorage.getItem('authToken');
+        let currentUser = null;
+        
+        // Проверка авторизации при загрузке
+        window.onload = function() {
+            if (authToken) {
+                checkAuth();
+            }
+            loadBets();
+        };
+        
+        function showMessage(text, type = 'info') {
+            const messageDiv = document.getElementById('messageDiv');
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type}`;
+            messageDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 5000);
+        }
+        
+        function showTab(tabName) {
+            // Скрываем все вкладки
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Деактивируем все табы
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Показываем выбранную вкладку
+            const tabContent = document.getElementById(tabName);
+            if (tabContent) {
+                tabContent.classList.add('active');
+            }
+            
+            // Активируем соответствующий таб
+            document.querySelectorAll('.tab').forEach(tab => {
+                if (tab.textContent.toLowerCase().includes(tabName.replace('-', ' '))) {
+                    tab.classList.add('active');
+                }
+            });
+            
+            // Загружаем данные для вкладки
+            if (tabName === 'my-bets' && authToken) {
+                loadMyBets();
+            } else if (tabName === 'leaderboard') {
+                loadLeaderboard();
+            } else if (tabName === 'profile' && authToken) {
+                loadProfile();
+            } else if (tabName === 'bets') {
+                loadBets();
+            }
+        }
+        
+        async function checkAuth() {
+            try {
+                const response = await fetch(`${API_URL}/profile`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    currentUser = data;
+                    updateUserUI(data);
+                } else {
+                    logout();
+                }
+            } catch (error) {
+                console.error('Auth check failed:', error);
+                logout();
+            }
+        }
+        
+        function updateUserUI(user) {
+            document.getElementById('authSection').style.display = 'none';
+            document.getElementById('userSection').style.display = 'flex';
+            document.getElementById('username').textContent = user.username;
+            document.getElementById('userPoints').textContent = user.points;
+        }
+        
+        // Регистрация
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('regUsername').value;
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPassword').value;
+            
+            try {
+                const response = await fetch(`${API_URL}/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage('Регистрация успешна! Теперь войдите в систему.', 'success');
+                    showTab('login');
+                    document.getElementById('registerForm').reset();
+                } else {
+                    showMessage(data.detail || 'Ошибка регистрации', 'error');
+                }
+            } catch (error) {
+                showMessage('Ошибка сервера', 'error');
+            }
+        });
+        
+        // Вход
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            try {
+                const response = await fetch(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    authToken = data.access_token;
+                    localStorage.setItem('authToken', authToken);
+                    currentUser = data;
+                    updateUserUI(data);
+                    showMessage('Вход выполнен успешно!', 'success');
+                    showTab('bets');
+                    document.getElementById('loginForm').reset();
+                } else {
+                    showMessage(data.detail || 'Ошибка входа', 'error');
+                }
+            } catch (error) {
+                showMessage('Ошибка сервера', 'error');
+            }
+        });
+        
+        function logout() {
+            localStorage.removeItem('authToken');
+            authToken = null;
+            currentUser = null;
+            document.getElementById('authSection').style.display = 'flex';
+            document.getElementById('userSection').style.display = 'none';
+            showTab('bets');
+        }
+        
+        // Загрузка ставок
+        async function loadBets() {
+            try {
+                const response = await fetch(`${API_URL}/bets`);
+                const bets = await response.json();
+                
+                const betsList = document.getElementById('betsList');
+                betsList.innerHTML = '';
+                
+                if (bets.length === 0) {
+                    betsList.innerHTML = '<p>Нет активных ставок</p>';
+                    return;
+                }
+                
+                bets.forEach(bet => {
+                    const betCard = document.createElement('div');
+                    betCard.className = 'bet-card';
+                    betCard.innerHTML = `
+                        <div class="bet-title">${bet.title}</div>
+                        <div class="bet-description">${bet.description || 'Без описания'}</div>
+                        <div class="bet-options" id="options-${bet.id}">
+                            ${bet.options.map(opt => `
+                                <div class="bet-option" data-bet-id="${bet.id}" data-option="${opt.name}">
+                                    ${opt.name} (x${opt.coefficient})
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="form-group">
+                            <input type="number" id="amount-${bet.id}" placeholder="Сумма ставки" min="1" step="1">
+                            <button onclick="placeBet(${bet.id})">Сделать ставку</button>
+                        </div>
+                    `;
+                    betsList.appendChild(betCard);
+                });
+                
+                // Добавляем обработчики для выбора опций
+                document.querySelectorAll('.bet-option').forEach(option => {
+                    option.addEventListener('click', function() {
+                        const betId = this.dataset.betId;
+                        document.querySelectorAll(`[data-bet-id="${betId}"]`).forEach(opt => {
+                            opt.classList.remove('selected');
+                        });
+                        this.classList.add('selected');
+                    });
+                });
+            } catch (error) {
+                console.error('Failed to load bets:', error);
+                showMessage('Ошибка загрузки ставок', 'error');
+            }
+        }
+        
+        // Сделать ставку
+        async function placeBet(betId) {
+            if (!authToken) {
+                showMessage('Войдите в систему для совершения ставок', 'error');
+                showTab('login');
+                return;
+            }
+            
+            const selectedOption = document.querySelector(`[data-bet-id="${betId}"].selected`);
+            const amount = document.getElementById(`amount-${betId}`).value;
+            
+            if (!selectedOption) {
+                showMessage('Выберите вариант ставки', 'error');
+                return;
+            }
+            
+            if (!amount || amount <= 0) {
+                showMessage('Введите корректную сумму ставки', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/place_bet`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        bet_id: betId,
+                        selected_option: selectedOption.dataset.option,
+                        amount: parseFloat(amount)
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage(`Ставка принята! Возможный выигрыш: ${data.potential_win}`, 'success');
+                    document.getElementById('userPoints').textContent = data.remaining_points;
+                    document.getElementById(`amount-${betId}`).value = '';
+                    selectedOption.classList.remove('selected');
+                } else {
+                    showMessage(data.detail || 'Ошибка размещения ставки', 'error');
+                }
+            } catch (error) {
+                showMessage('Ошибка сервера', 'error');
+            }
+        }
+        
+        // Загрузка моих ставок
+        async function loadMyBets() {
+            if (!authToken) {
+                document.getElementById('myBetsList').innerHTML = '<p>Войдите для просмотра ваших ставок</p>';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/my_bets`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                const bets = await response.json();
+                const myBetsList = document.getElementById('myBetsList');
+                
+                if (bets.length === 0) {
+                    myBetsList.innerHTML = '<p>У вас пока нет ставок</p>';
+                    return;
+                }
+                
+                myBetsList.innerHTML = bets.map(bet => `
+                    <div class="bet-card">
+                        <div class="bet-title">${bet.bet_title}</div>
+                        <div>Выбор: ${bet.selected_option}</div>
+                        <div>Сумма: ${bet.amount}</div>
+                        <div>Возможный выигрыш: ${bet.potential_win}</div>
+                        <div>Статус: ${bet.is_won === null ? 'В процессе' : bet.is_won ? 'Выиграна' : 'Проиграна'}</div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                showMessage('Ошибка загрузки ставок', 'error');
+            }
+        }
+        
+        // Загрузка рейтинга
+        async function loadLeaderboard() {
+            try {
+                const response = await fetch(`${API_URL}/leaderboard`);
+                const leaderboard = await response.json();
+                
+                const leaderboardList = document.getElementById('leaderboardList');
+                leaderboardList.innerHTML = `
+                    <table style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>Место</th>
+                                <th>Игрок</th>
+                                <th>Очки</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${leaderboard.map(user => `
+                                <tr>
+                                    <td>${user.rank}</td>
+                                    <td>${user.username}</td>
+                                    <td>${user.points}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } catch (error) {
+                showMessage('Ошибка загрузки рейтинга', 'error');
+            }
+        }
+        
+        // Загрузка профиля
+        async function loadProfile() {
+            if (!authToken) {
+                document.getElementById('profileInfo').innerHTML = '<p>Войдите для просмотра профиля</p>';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/profile`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                const profile = await response.json();
+                
+                document.getElementById('profileInfo').innerHTML = `
+                    <div class="bet-card">
+                        <h3>Информация о пользователе</h3>
+                        <p><strong>Имя:</strong> ${profile.username}</p>
+                        <p><strong>Email:</strong> ${profile.email}</p>
+                        <p><strong>Очки:</strong> ${profile.points}</p>
+                        <p><strong>Discord:</strong> ${profile.discord_id || 'Не привязан'}</p>
+                        <p><strong>Верификация:</strong> ${profile.is_verified ? '✅ Подтверждена' : '❌ Не подтверждена'}</p>
+                        <p><strong>Дата регистрации:</strong> ${new Date(profile.created_at).toLocaleDateString()}</p>
+                    </div>
+                `;
+                
+                // Скрываем форму привязки Discord если уже привязан
+                if (profile.discord_id) {
+                    document.querySelector('.discord-verify').style.display = 'none';
+                }
+            } catch (error) {
+                showMessage('Ошибка загрузки профиля', 'error');
+            }
+        }
+        
+        // Привязка Discord
+        async function linkDiscord() {
+            if (!authToken) {
+                showMessage('Войдите в систему', 'error');
+                return;
+            }
+            
+            const discordId = document.getElementById('discordId').value;
+            const key = document.getElementById('verifyKey').value;
+            
+            if (!discordId || !key) {
+                showMessage('Заполните все поля', 'error');
+                return;
+            }
+            
+            try {
+                // Сначала верифицируем через Discord бота
+                const botResponse = await fetch(DISCORD_BOT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        discord_id: discordId,
+                        key: key,
+                        role_type: 'member',
+                        secret: 'ABOBAROFLINT228ZXC'
+                    })
+                });
+                
+                if (!botResponse.ok) {
+                    const error = await botResponse.json();
+                    showMessage(error.error || 'Ошибка верификации Discord', 'error');
+                    return;
+                }
+                
+                // Затем связываем с аккаунтом
+                const response = await fetch(`${API_URL}/discord/link`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        user_id: discordId,
+                        username: currentUser.username,
+                        key: key
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage(`Discord успешно привязан! Получено ${data.bonus_points} бонусных очков!`, 'success');
+                    document.getElementById('userPoints').textContent = data.total_points;
+                    loadProfile();
+                } else {
+                    showMessage(data.detail || 'Ошибка привязки Discord', 'error');
+                }
+            } catch (error) {
+                showMessage('Ошибка сервера', 'error');
+            }
+        }
+    </script>
+</body>
+</html>
