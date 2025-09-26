@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: betting_api
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=sqlite:///betting_system.db
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
+      - ADMIN_TOKEN=${ADMIN_TOKEN:-admin-secure-token-change-in-production}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - app_data:/app
+    depends_on:
+      - redis
+    networks:
+      - betting_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: betting_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - betting_network
+
+  nginx:
+    image: nginx:alpine
+    container_name: betting_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl  # для SSL сертификатов
+    depends_on:
+      - app
+    networks:
+      - betting_network
+
+volumes:
+  app_data:
+  redis_data:
+
+networks:
+  betting_network:
+    driver: bridge
