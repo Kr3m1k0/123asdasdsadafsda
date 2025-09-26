@@ -6,15 +6,20 @@ import random
 import string
 import asyncio
 from flask import Flask, request, jsonify
-from flask_cors import CORS  # Добавьте этот импорт
+from flask_cors import CORS
 import threading
 import logging
+import httpx
+import os
 
 # Настройки
-GUILD_ID = 680473306440269852 # ID вашего Discord сервера
-MEMBER_ROLE_ID = 1418321489576333345  # ID роли "Участник"
-VIEWER_ROLE_ID = 1418321452028919944  # ID роли "Зритель"
-WEBHOOK_SECRET = 'ABOBAROFLINT228ZXC'  # Секретный ключ для защиты webhook
+GUILD_ID = int(os.getenv('GUILD_ID', '680473306440269852'))
+MEMBER_ROLE_ID = int(os.getenv('MEMBER_ROLE_ID', '1418321489576333345'))
+VIEWER_ROLE_ID = int(os.getenv('VIEWER_ROLE_ID', '1418321452028919944'))
+WEBHOOK_SECRET = os.getenv('WEBHOOK_SECRET', 'ABOBAROFLINT228ZXC')
+
+# URL основного API
+MAIN_API_URL = os.getenv('MAIN_API_URL', 'http://localhost:8000')
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -35,7 +40,6 @@ class KeyBot(commands.Bot):
         conn = sqlite3.connect(self.db_path)
         c = conn.cursor()
 
-        # Таблица для ключей
         c.execute('''
             CREATE TABLE IF NOT EXISTS keys (
                 key TEXT PRIMARY KEY,
@@ -46,7 +50,6 @@ class KeyBot(commands.Bot):
             )
         ''')
 
-        # Таблица для логов
         c.execute('''
             CREATE TABLE IF NOT EXISTS verification_logs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -65,7 +68,6 @@ class KeyBot(commands.Bot):
         conn = sqlite3.connect(self.db_path)
         c = conn.cursor()
 
-        # Проверяем, есть ли уже ключи в базе
         c.execute("SELECT COUNT(*) FROM keys")
         existing_count = c.fetchone()[0]
 
@@ -80,7 +82,6 @@ class KeyBot(commands.Bot):
         logger.info(f"Генерация {keys_to_generate} новых ключей...")
 
         while generated < keys_to_generate:
-            # Генерируем ключ из 16 символов
             key = ''.join(random.choices(string.ascii_letters + string.digits, k=16))
 
             try:
@@ -92,7 +93,6 @@ class KeyBot(commands.Bot):
                     logger.info(f"Сгенерировано {generated}/{keys_to_generate} ключей")
 
             except sqlite3.IntegrityError:
-                # Ключ уже существует, генерируем новый
                 continue
 
         conn.commit()
@@ -100,7 +100,6 @@ class KeyBot(commands.Bot):
         logger.info(f"Генерация завершена. Всего ключей в базе: {count}")
 
 
-# Создаем экземпляр бота
 bot = KeyBot()
 
 
@@ -110,26 +109,12 @@ async def on_ready():
     bot.generate_keys()
 
     try:
-        # Глобальная синхронизация (работает везде, но занимает до часа)
         synced = await bot.tree.sync()
         logger.info(f'Глобально синхронизировано {len(synced)} команд')
     except Exception as e:
         logger.error(f'Ошибка синхронизации: {e}')
 
 
-# И добавьте эту команду для ручной синхронизации
-@bot.command()
-@commands.is_owner()
-async def sync(ctx):
-    """Ручная синхронизация команд (только владелец бота)"""
-    try:
-        synced = await bot.tree.sync()
-        await ctx.send(f'Синхронизировано {len(synced)} команд')
-    except Exception as e:
-        await ctx.send(f'Ошибка: {e}')
-@bot.tree.command(name='test', description='Тестовая команда')
-async def test(interaction: discord.Interaction):
-    await interaction.response.send_message('Команды работают!', ephemeral=True)
 @bot.tree.command(name='key', description='Получить уникальный ключ для верификации')
 async def get_key(interaction: discord.Interaction):
     """Команда для получения ключа"""
@@ -138,12 +123,10 @@ async def get_key(interaction: discord.Interaction):
     conn = sqlite3.connect(bot.db_path)
     c = conn.cursor()
 
-    # Проверяем, есть ли у пользователя уже ключ
     c.execute("SELECT key FROM keys WHERE user_id = ?", (user_id,))
     existing_key = c.fetchone()
 
     if existing_key:
-        # У пользователя уже есть ключ
         await interaction.response.send_message(
             f"🔑 Ваш ключ: `{existing_key[0]}`\n"
             f"⚠️ Вы уже получали ключ ранее. Используйте его на сайте для верификации.",
@@ -152,12 +135,10 @@ async def get_key(interaction: discord.Interaction):
         conn.close()
         return
 
-    # Получаем первый свободный ключ
     c.execute("SELECT key FROM keys WHERE user_id IS NULL LIMIT 1")
     free_key = c.fetchone()
 
     if not free_key:
-        # Нет свободных ключей
         await interaction.response.send_message(
             "❌ Извините, все ключи уже распределены. Обратитесь к администратору.",
             ephemeral=True
@@ -167,24 +148,56 @@ async def get_key(interaction: discord.Interaction):
 
     key = free_key[0]
 
-    # Закрепляем ключ за пользователем
     c.execute("UPDATE keys SET user_id = ? WHERE key = ?", (user_id, key))
     conn.commit()
     conn.close()
 
-    # Отправляем ключ пользователю (видно только ему)
     await interaction.response.send_message(
         f"🔑 **Ваш уникальный ключ:** `{key}`\n\n"
         f"📝 **Инструкция:**\n"
         f"1. Скопируйте этот ключ\n"
-        f"2. Перейдите на сайт для верификации\n"
-        f"3. Введите ключ в соответствующее поле\n"
-        f"4. После подтверждения вы автоматически получите роль на сервере\n\n"
+        f"2. Перейдите на сайт {MAIN_API_URL} для верификации\n"
+        f"3. Зарегистрируйтесь или войдите в свой аккаунт\n"
+        f"4. Привяжите Discord аккаунт, используя ключ\n"
+        f"5. После подтверждения вы автоматически получите роль на сервере\n\n"
         f"⚠️ **Важно:** Этот ключ уникален и может быть использован только один раз!",
         ephemeral=True
     )
 
     logger.info(f"Пользователь {interaction.user.name} (ID: {user_id}) получил ключ: {key}")
+
+
+@bot.tree.command(name='verify', description='Проверить статус верификации')
+async def check_verification(interaction: discord.Interaction):
+    """Проверить статус верификации пользователя"""
+    user_id = interaction.user.id
+
+    conn = sqlite3.connect(bot.db_path)
+    c = conn.cursor()
+
+    c.execute("SELECT key, used FROM keys WHERE user_id = ?", (user_id,))
+    result = c.fetchone()
+
+    if not result:
+        await interaction.response.send_message(
+            "❌ У вас нет выданного ключа. Используйте команду `/key` для получения.",
+            ephemeral=True
+        )
+    else:
+        key, used = result
+        if used:
+            await interaction.response.send_message(
+                "✅ Ваш аккаунт верифицирован!",
+                ephemeral=True
+            )
+        else:
+            await interaction.response.send_message(
+                f"⏳ Ваш ключ `{key}` еще не использован.\n"
+                f"Перейдите на сайт {MAIN_API_URL} для завершения верификации.",
+                ephemeral=True
+            )
+
+    conn.close()
 
 
 @bot.tree.command(name='stats', description='[Админ] Статистика использования ключей')
@@ -194,7 +207,6 @@ async def stats(interaction: discord.Interaction):
     conn = sqlite3.connect(bot.db_path)
     c = conn.cursor()
 
-    # Получаем статистику
     c.execute("SELECT COUNT(*) FROM keys")
     total_keys = c.fetchone()[0]
 
@@ -225,20 +237,11 @@ async def stats(interaction: discord.Interaction):
 app = Flask(__name__)
 CORS(app)
 
-# Добавляем поддержку CORS
-@app.after_request
-def after_request(response):
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    return response
-
 
 @app.route('/webhook/verify', methods=['POST', 'OPTIONS'])
 def verify_webhook():
     """Endpoint для приема уведомлений с сайта"""
 
-    # Обработка preflight запроса
     if request.method == 'OPTIONS':
         response = jsonify({'status': 'ok'})
         response.headers.add('Access-Control-Allow-Origin', '*')
@@ -249,18 +252,16 @@ def verify_webhook():
     try:
         data = request.json
 
-        # Проверяем секретный ключ
         if data.get('secret') != WEBHOOK_SECRET:
             return jsonify({'error': 'Unauthorized'}), 401
 
-        user_id = data.get('user_id')
+        discord_id = data.get('discord_id')
         key = data.get('key')
-        role_type = data.get('role_type', 'member')  # 'member' или 'viewer'
+        role_type = data.get('role_type', 'member')
 
-        if not user_id or not key:
+        if not discord_id or not key:
             return jsonify({'error': 'Missing required fields'}), 400
 
-        # Проверяем ключ в базе данных
         conn = sqlite3.connect(bot.db_path)
         c = conn.cursor()
 
@@ -274,11 +275,10 @@ def verify_webhook():
         db_user_id, used = key_data
 
         # Проверяем, что ключ принадлежит этому пользователю
-        if db_user_id != user_id:
+        if db_user_id != int(discord_id):
             conn.close()
             return jsonify({'error': 'Key does not belong to this user'}), 403
 
-        # Проверяем, не использован ли ключ
         if used:
             conn.close()
             return jsonify({'error': 'Key already used'}), 400
@@ -293,7 +293,7 @@ def verify_webhook():
         # Логируем верификацию
         c.execute(
             "INSERT INTO verification_logs (user_id, key, role_given) VALUES (?, ?, ?)",
-            (user_id, key, role_name)
+            (discord_id, key, role_name)
         )
 
         conn.commit()
@@ -301,7 +301,13 @@ def verify_webhook():
 
         # Выдаем роль пользователю (асинхронно)
         asyncio.run_coroutine_threadsafe(
-            assign_role(user_id, role_id, role_name),
+            assign_role(int(discord_id), role_id, role_name),
+            bot.loop
+        )
+
+        # Уведомляем основной API о верификации
+        asyncio.run_coroutine_threadsafe(
+            notify_main_api(discord_id),
             bot.loop
         )
 
@@ -310,6 +316,8 @@ def verify_webhook():
     except Exception as e:
         logger.error(f"Ошибка в webhook: {e}")
         return jsonify({'error': 'Internal server error'}), 500
+
+
 async def assign_role(user_id, role_id, role_name):
     """Асинхронная функция для выдачи роли"""
     try:
@@ -331,23 +339,41 @@ async def assign_role(user_id, role_id, role_name):
         await member.add_roles(role)
         logger.info(f"Пользователю {member.name} (ID: {user_id}) выдана роль {role_name}")
 
-        # Отправляем личное сообщение пользователю
         try:
             await member.send(
                 f"✅ **Верификация успешна!**\n"
-                f"Вам была выдана роль **{role_name}** на сервере {guild.name}."
+                f"Вам была выдана роль **{role_name}** на сервере {guild.name}.\n"
+                f"Теперь вы можете участвовать в ставках на сайте {MAIN_API_URL}"
             )
         except discord.Forbidden:
-            # Не можем отправить ЛС
             pass
 
     except Exception as e:
         logger.error(f"Ошибка при выдаче роли: {e}")
 
 
+async def notify_main_api(discord_id):
+    """Уведомить основной API о верификации"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{MAIN_API_URL}/webhook/discord-verified",
+                json={
+                    "discord_id": str(discord_id),
+                    "key": "",  # Ключ уже проверен
+                    "role_type": "member",
+                    "secret": WEBHOOK_SECRET
+                }
+            )
+            if response.status_code == 200:
+                logger.info(f"Основной API уведомлен о верификации пользователя {discord_id}")
+    except Exception as e:
+        logger.error(f"Не удалось уведомить основной API: {e}")
+
+
 def run_flask():
     """Запуск Flask сервера в отдельном потоке"""
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    app.run(host='0.0.0.0', port=5001, debug=False)
 
 
 if __name__ == '__main__':
